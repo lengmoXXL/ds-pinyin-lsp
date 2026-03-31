@@ -158,6 +158,26 @@ impl LanguageServer for Backend {
                 }
             }
 
+            // check if has chinese characters but no english
+            if Regex::new(r"\p{Han}")
+                .unwrap()
+                .is_match(backward_line)
+                && !Regex::new(r"[a-zA-Z]")
+                    .unwrap()
+                    .is_match(backward_line)
+            {
+                // return placeholder for chinese-only input
+                return Ok(Some(CompletionResponse::List(CompletionList {
+                    is_incomplete: true,
+                    items: vec![CompletionItem {
+                        label: String::from("Pinyin Placeholder"),
+                        kind: Some(CompletionItemKind::TEXT),
+                        filter_text: Some(String::from("‍")),
+                        ..Default::default()
+                    }],
+                })));
+            }
+
             // return for empty pinyin
             return Ok(Some(CompletionResponse::Array(vec![])));
         }
