@@ -96,22 +96,22 @@ pub fn long_suggests_to_completion_item(
     suggests: Vec<Suggest>,
     range: Range,
 ) -> Vec<CompletionItem> {
+    let sentence_filter_text = suggests
+        .iter()
+        .map(|s| s.pinyin.clone())
+        .collect::<Vec<String>>()
+        .join("");
+
     let hanzi = suggests
         .iter()
         .map(|s| s.hanzi.clone())
         .collect::<Vec<String>>()
         .join("");
 
-    let pinyin = suggests
-        .iter()
-        .map(|s| s.pinyin.clone())
-        .collect::<Vec<String>>()
-        .join("");
-
     let sentence = vec![CompletionItem {
         label: hanzi.to_string(),
         kind: Some(CompletionItemKind::TEXT),
-        filter_text: Some(pinyin.clone()),
+        filter_text: Some(sentence_filter_text),
         // use text_edit here to avoid client's replace mode
         // it's no need to replace words behind cursor
         text_edit: Some(CompletionTextEdit::Edit(TextEdit::new(range, hanzi))),
@@ -126,7 +126,7 @@ pub fn long_suggests_to_completion_item(
                 .map(|s| CompletionItem {
                     label: s.hanzi.to_string(),
                     kind: Some(CompletionItemKind::TEXT),
-                    filter_text: Some(pinyin.clone()),
+                    filter_text: Some(s.pinyin),
                     // use text_edit here to avoid client's replace mode
                     // it's no need to replace words behind cursor
                     text_edit: Some(CompletionTextEdit::Edit(TextEdit::new(
@@ -159,6 +159,29 @@ pub fn suggests_to_completion_item(suggests: Vec<Suggest>, range: Range) -> Vec<
             ..Default::default()
         })
         .collect::<Vec<CompletionItem>>()
+}
+
+pub fn normalize_pinyin_for_query(pinyin: &str) -> String {
+    pinyin.to_ascii_lowercase()
+}
+
+pub fn get_pinyin_query_candidates(pinyin: &str, correct_typo: bool) -> Vec<String> {
+    let normalized = normalize_pinyin_for_query(pinyin);
+    let mut candidates = vec![normalized.clone()];
+
+    if correct_typo {
+        // Common typo: transpose `ng` into `gn`, for example `pign` -> `ping`.
+        let corrected = Regex::new(r"([aeiouv])gn")
+            .unwrap()
+            .replace_all(&normalized, "${1}ng")
+            .to_string();
+
+        if corrected != normalized {
+            candidates.push(corrected);
+        }
+    }
+
+    candidates
 }
 
 pub fn symbols_to_completion_item(
@@ -205,13 +228,25 @@ pub fn get_pinyin<'a>(pre_line: &'a str) -> Option<String> {
 pub mod test_utils {
     use rusqlite::Connection;
 
-    use super::{get_pinyin, query_long_sentence};
+    use super::{get_pinyin, get_pinyin_query_candidates, query_long_sentence};
 
     #[test]
     fn test_get_pinyin() {
         assert_eq!(
             get_pinyin("hello world nihao").expect("get pinyin nihao"),
             "nihao"
+        );
+    }
+
+    #[test]
+    fn test_get_pinyin_query_candidates() {
+        assert_eq!(
+            get_pinyin_query_candidates("ZHOIGN", true),
+            vec!["zhoign".to_string(), "zhoing".to_string()]
+        );
+        assert_eq!(
+            get_pinyin_query_candidates("nihao", true),
+            vec!["nihao".to_string()]
         );
     }
 

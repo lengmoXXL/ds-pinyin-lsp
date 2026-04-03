@@ -44,6 +44,7 @@
 - `ds-pinyin-lsp.show_symbols_by_n_times`: 是否在输入 `n` 次符号后才显示中文符号补全选项，`0` 表示不开启先选
 - `ds-pinyin-lsp.match_as_same_as_input`: 是否只显示完全匹配结果，比如: 输入 `pinyin` 会只显示 `拼音` 选项，不会显示 `拼音输入法` 等选项
 - `ds-pinyin-lsp.match_long_input`: 是否显示长句匹配，比如：输入 `nihaonishishei` 在没有补全项的时候会把 `你好` `你是谁` 两个选项拼起来作为补全选项
+- `ds-pinyin-lsp.correct_pinyin_typo`: 是否在查字典前自动纠正常见拼音输错，比如把 `ign` 纠正成 `ing`
 - `ds-pinyin-lsp.max_suggest`: 中文补全列表最大显示个数
 
 插件命令：
@@ -90,6 +91,7 @@ require('lspconfig').ds_pinyin_lsp.setup {
         "show_symbols_by_n_times": 0,                              // 是否在输入 `n` 次符号后才显示中文符号补全选项，`0` 表示不开启先选
         "match_as_same_as_input": true,                            // 是否只显示完全匹配结果，比如: 输入 `pinyin` 会只显示 `拼音` 选项，不会显示 `拼音输入法` 选项
         "match_long_input": true,                                  // 是否显示长句匹配，比如：输入 `nihaonishishei` 在没有补全项的时候会把 `你好` `你是谁` 两个选项拼起来作为补全选项
+        "correct_pinyin_typo": true,                               // 是否在查字典前自动纠正常见拼音输错，比如把 `ign` 纠正成 `ing`
         "max_suggest": 50                                          // 中文补全列表最大显示个数
       }
     }

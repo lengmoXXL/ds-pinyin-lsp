@@ -96,6 +96,11 @@
           "default": true,
           "description": "If show items for the long input"
         },
+        "ds-pinyin-lsp.correct_pinyin_typo": {
+          "type": "boolean",
+          "default": true,
+          "description": "If auto-correct common pinyin typos before dictionary lookup"
+        },
         "ds-pinyin-lsp.max_suggest": {
           "type": "integer",
           "default": 50,

@@ -106,6 +106,7 @@ export class Ctx {
       show_symbols_by_n_times: config.get<number>('show_symbols_by_n_times', 0),
       match_as_same_as_input: config.get<boolean>('match_as_same_as_input', false),
       match_long_input: config.get<boolean>('match_long_input', true),
+      correct_pinyin_typo: config.get<boolean>('correct_pinyin_typo', true),
       max_suggest: config.get<number>('max_suggest', 50),
     };
   }

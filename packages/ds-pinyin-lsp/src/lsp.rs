@@ -1,8 +1,8 @@
 use crate::sqlite::query_dict;
 use crate::types::Setting;
 use crate::utils::{
-    get_current_line, get_pinyin, long_suggests_to_completion_item, query_long_sentence,
-    suggests_to_completion_item, symbols_to_completion_item,
+    get_current_line, get_pinyin, get_pinyin_query_candidates, long_suggests_to_completion_item,
+    query_long_sentence, suggests_to_completion_item, symbols_to_completion_item,
 };
 use dashmap::DashMap;
 use lsp_document::{apply_change, IndexedText, TextAdapter};
@@ -160,7 +160,10 @@ impl LanguageServer for Backend {
 
             // check if the last character is a chinese character
             if let Some(last_char) = backward_line.chars().last() {
-                if Regex::new(r"\p{Han}").unwrap().is_match(&last_char.to_string()) {
+                if Regex::new(r"\p{Han}")
+                    .unwrap()
+                    .is_match(&last_char.to_string())
+                {
                     // return placeholder for chinese input
                     return Ok(Some(CompletionResponse::List(CompletionList {
                         is_incomplete: true,
@@ -223,31 +226,33 @@ impl LanguageServer for Backend {
         );
 
         if let Some(ref conn) = *self.conn.lock().await {
-            // dict search match
-            if let Ok(suggests) = query_dict(
-                conn,
-                &pinyin,
-                setting.max_suggest,
-                setting.match_as_same_as_input,
-            ) {
-                if suggests.len() > 0 {
-                    return Ok(Some(CompletionResponse::List(CompletionList {
-                        is_incomplete: true,
-                        items: suggests_to_completion_item(suggests, range),
-                    })));
-                }
-            }
-
-            // long sentence
-            if setting.match_long_input {
-                if let Ok(Some(suggests)) =
-                    query_long_sentence(conn, &pinyin, setting.match_as_same_as_input)
-                {
-                    if suggests.len() > 0 {
+            for query_pinyin in get_pinyin_query_candidates(&pinyin, setting.correct_pinyin_typo) {
+                // dict search match
+                if let Ok(suggests) = query_dict(
+                    conn,
+                    &query_pinyin,
+                    setting.max_suggest,
+                    setting.match_as_same_as_input,
+                ) {
+                    if !suggests.is_empty() {
                         return Ok(Some(CompletionResponse::List(CompletionList {
                             is_incomplete: true,
-                            items: long_suggests_to_completion_item(suggests, range),
+                            items: suggests_to_completion_item(suggests, range.clone()),
                         })));
+                    }
+                }
+
+                // long sentence
+                if setting.match_long_input {
+                    if let Ok(Some(suggests)) =
+                        query_long_sentence(conn, &query_pinyin, setting.match_as_same_as_input)
+                    {
+                        if !suggests.is_empty() {
+                            return Ok(Some(CompletionResponse::List(CompletionList {
+                                is_incomplete: true,
+                                items: long_suggests_to_completion_item(suggests, range.clone()),
+                            })));
+                        }
                     }
                 }
             }
@@ -299,6 +304,7 @@ impl Backend {
             "show_symbols_by_n_times",
             "match_as_same_as_input",
             "match_long_input",
+            "correct_pinyin_typo",
             "max_suggest",
         ] {
             if let Some(option) = params.get(option_key) {
@@ -344,6 +350,10 @@ impl Backend {
                     "match_long_input" => {
                         (*setting).match_long_input =
                             option.as_bool().unwrap_or(setting.match_long_input);
+                    }
+                    "correct_pinyin_typo" => {
+                        (*setting).correct_pinyin_typo =
+                            option.as_bool().unwrap_or(setting.correct_pinyin_typo);
                     }
                     "max_suggest" => {
                         (*setting).max_suggest = option.as_u64().unwrap_or(setting.max_suggest);
